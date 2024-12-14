@@ -5,6 +5,7 @@
 #   "numpy",
 #   "seaborn",
 #   "scikit-learn",
+#   "scipy",
 #   "requests",
 #   "matplotlib",
 #   "tabulate",
@@ -13,9 +14,12 @@
 # ///
 
 """
-Imports 
+Imports
 """
 
+from typing import Optional
+from PIL import Image
+import io
 import os
 import sys
 import json
@@ -26,6 +30,7 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 import requests
+from scipy.stats import skew, kurtosis, chi2_contingency
 
 
 AIPROXY_TOKEN = os.getenv("AIPROXY_TOKEN")
@@ -109,13 +114,13 @@ def summarize_data(data: pd.DataFrame) -> Tuple[pd.DataFrame, pd.DataFrame, pd.S
     return numerical_summary, categorical_summary, missing_values
 
 
-def generate_visualizations(data: pd.DataFrame, file_path: str) -> None:
+def generate_visualizations(data: pd.DataFrame, file_path: str) -> str:
     """
     Generates visualizations (e.g., correlation heatmap) based on the dataset.
 
     :param data: Pandas DataFrame containing the dataset.
     :param file_path: Path to the CSV file.
-    :return: None
+    :return: Path to correlation matrix
     """
     dataset_name = os.path.splitext(os.path.basename(file_path))[0]
     folder_path = os.path.join(os.getcwd(), dataset_name)
@@ -131,6 +136,8 @@ def generate_visualizations(data: pd.DataFrame, file_path: str) -> None:
         plt.savefig(corr_path)
         plt.close()
 
+    return corr_path
+
 
 def analyze_with_llm(filename: str, api_key: str) -> Optional[str]:
     """
@@ -140,15 +147,20 @@ def analyze_with_llm(filename: str, api_key: str) -> Optional[str]:
     :param api_key: OpenAI API key for authenticating the request.
     :return: string with the LLM's analysis results, or None if the request fails.
     """
+
     data = load_data(filename)
-    summary_stats = data.describe().to_dict()
+    numerical_cols = data.select_dtypes(include=['number']).columns.tolist()
+    categorical_cols = data.select_dtypes(
+        include=['object', 'category']).columns.tolist()
+    time_series_cols = [
+        col for col in data.columns if pd.api.types.is_datetime64_any_dtype(data[col])]
+    text_cols = [
+        col for col in categorical_cols if data[col].str.len().mean() > 50]
     column_info = {col: str(data[col].dtype) for col in data.columns}
 
-    dataset_summary = {
-        "columns": list(data.columns),
-        "column_info": column_info,
-        "summary_stats": summary_stats
-    }
+    dataset_summary = data_summary(
+        data, numerical_cols, categorical_cols, time_series_cols, text_cols)
+
     url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
     headers = {
         "Content-Type": "application/json",
@@ -170,7 +182,7 @@ def analyze_with_llm(filename: str, api_key: str) -> Optional[str]:
     3. Suggest any potential insights or analyses that might be valuable.
     4. Provide any other interesting observations from the dataset.
 
-    Please return your findings in a MARKDOWN format you can use html in it to further beautify it,
+    Please return your findings in a MARKDOWN format, you can use html in it to further beautify it,
     highlighting the trends, insights, and any notable outliers or anomalies.
     """
 
@@ -180,11 +192,12 @@ def analyze_with_llm(filename: str, api_key: str) -> Optional[str]:
         "messages": [
             {
                 "role": "system",
-                "content": """You are an intelligent data analyst capable of providing insights from datasets. 
+                "content": """You are an intelligent data analyst capable of providing insights from datasets.
                     You provide your insights in the form of a story which is very captivating.
                     You always support your claims with data. You only claim when you have data to back it up.
                     You are very professional and well versed in providing insights in comprehensive fashion.
-                    You always return your findings in a MARKDOWN format you can use html in it to further beautify it."""
+                    You always return your findings in a MARKDOWN format you can use html in it to further beautify it.
+                    You will never add placeholder images or dummy images"""
             },
             {
                 "role": "user",
@@ -222,12 +235,9 @@ def analyze_and_generate_graphs(data: pd.DataFrame, api_key: str) -> None:
     text_cols = [
         col for col in categorical_cols if data[col].str.len().mean() > 50]
 
-    dataset_summary = {
-        "numerical_cols": numerical_cols,
-        "categorical_cols": categorical_cols,
-        "time_series_cols": time_series_cols,
-        "text_cols": text_cols,
-    }
+    # Descriptive Statistics for Numerical Columns
+    dataset_summary = data_summary(
+        data, numerical_cols, categorical_cols, time_series_cols, text_cols)
 
     functions = [
         {
@@ -407,9 +417,63 @@ def analyze_and_generate_graphs(data: pd.DataFrame, api_key: str) -> None:
         return None
 
 
+def data_summary(data, numerical_cols, categorical_cols, time_series_cols, text_cols):
+    numerical_summary = data[numerical_cols].describe().T
+    numerical_summary['skewness'] = data[numerical_cols].skew()
+    numerical_summary['kurtosis'] = data[numerical_cols].apply(kurtosis)
+
+    # Correlation Analysis
+    correlation_matrix = data[numerical_cols].corr()
+
+    # Categorical Summary
+    categorical_summary = {}
+    for col in categorical_cols:
+        freq_table = data[col].value_counts(normalize=True).head(5)
+        categorical_summary[col] = freq_table.to_dict()
+
+    # Chi-Squared Test for Independence (Example for Pairs of Categorical Variables)
+    chi_squared_results = {}
+    for i, col1 in enumerate(categorical_cols):
+        for col2 in categorical_cols[i + 1:]:
+            contingency_table = pd.crosstab(data[col1], data[col2])
+            chi2, p, _, _ = chi2_contingency(contingency_table)
+            chi_squared_results[f"{col1} vs {col2}"] = {
+                'chi2': chi2, 'p_value': p}
+
+    # Time-Series Summary (Feature Extraction)
+    time_series_summary = {}
+    for col in time_series_cols:
+        time_series_summary[col] = {
+            'start_date': data[col].min(),
+            'end_date': data[col].max(),
+            'unique_dates': data[col].nunique()
+        }
+
+    # Text Summary
+    text_summary = {}
+    for col in text_cols:
+        text_summary[col] = {
+            'avg_length': data[col].str.len().mean(),
+            'max_length': data[col].str.len().max(),
+            'top_words': pd.Series(' '.join(data[col]).split()).value_counts().head(5).to_dict()
+        }
+
+    # Final Summary
+    dataset_summary = {
+        "numerical_summary": numerical_summary.to_dict(),
+        "correlation_matrix": correlation_matrix.to_dict(),
+        "categorical_summary": categorical_summary,
+        "chi_squared_results": chi_squared_results,
+        "time_series_summary": time_series_summary,
+        "text_summary": text_summary,
+    }
+
+    return dataset_summary
+
+
 def save_readme(file_path: str, llm_response: str) -> None:
     """
-    Saves the LLM response and analysis summary in a README.md file inside a folder 
+    Saves the LLM response and analysis summary in a README.md file inside a folder
     named after the dataset (folder name will be the same as the dataset filename).
 
     :param file_path: Path to the dataset CSV file.
@@ -584,6 +648,84 @@ def generate_mixed_data_charts(data: pd.DataFrame, output_folder: str) -> None:
         generate_categorical_charts(data, categorical_cols, output_folder)
 
 
+def analyze_image_with_llm(image_path: str, api_key: str) -> Optional[str]:
+    """
+    Sends image data with reduced quality to an LLM via the proxy API and returns analysis results in markdown format.
+
+    :param image_path: Path to the image file.
+    :param api_key: OpenAI API key for authenticating the request.
+    :return: string with the LLM's analysis results, or None if the request fails.
+    """
+    # Load and compress the image
+    try:
+        img = Image.open(image_path)
+        img_buffer = io.BytesIO()
+        img.save(img_buffer, format="PNG")
+        img_buffer.seek(0)
+    except Exception as e:
+        print(f"Error loading or compressing image: {e}")
+        return None
+
+    # Prepare the API request
+    url = "https://aiproxy.sanand.workers.dev/openai/v1/chat/completions"
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}"
+    }
+
+    data_prompt = f"""
+    Analyze the provided correlation matrix and provide some insights. Heading should be correlation matrix analysis
+
+    Return your findings in a MARKDOWN format, using HTML to enhance the readability of the results.
+    """
+
+    # Convert image bytes to a base64 string
+    import base64
+    img_base64 = base64.b64encode(img_buffer.read()).decode('utf-8')
+
+    data_to_send = {
+        "model": "gpt-4o-mini",
+        "response_format": {"type": "text"},
+        "messages": [
+            {
+                "role": "system",
+                "content": """You are an intelligent image analyst capable of providing insights from images.
+                    You describe the image in detail and provide interesting observations.
+                    You always return your findings in a MARKDOWN format, using HTML to enhance readability.
+                    Avoid placeholder or dummy content."""
+            },
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "text",
+                        "text": data_prompt
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/jpeg;base64,{img_base64}",
+                            "detail": "low"
+                        }
+                    }
+                ]
+            }
+        ],
+    }
+
+    # Send the request
+    response = requests.post(url, headers=headers, json=data_to_send)
+
+    if response.status_code == 200:
+        result = response.json()
+        analysis = result["choices"][0]["message"]["content"]
+        return analysis
+    else:
+        print(response.text)
+        print(f"Error: {response.status_code}")
+        return None
+
+
 def main(file_path: str) -> None:
     """
     Orchestrates the loading, summarizing, and analyzing of the dataset.
@@ -607,13 +749,19 @@ def main(file_path: str) -> None:
         f.write("\n## Missing Values\n")
         f.write(missing_values.to_markdown())
 
-    generate_visualizations(data, file_path)
+    corr_path = generate_visualizations(data, file_path)
 
-    llm_response = analyze_with_llm(file_path, AIPROXY_TOKEN)
-    analyze_and_generate_graphs(data, AIPROXY_TOKEN)
+    llm_response = analyze_image_with_llm(corr_path, AIPROXY_TOKEN)
 
     if llm_response:
         save_readme(file_path, llm_response)
+
+    llm_response = analyze_with_llm(file_path, AIPROXY_TOKEN)
+
+    if llm_response:
+        save_readme(file_path, llm_response)
+
+    analyze_and_generate_graphs(data, AIPROXY_TOKEN)
 
     print("Analysis complete. Results saved to README.md and charts.")
 
