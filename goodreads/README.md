@@ -55,85 +55,138 @@
 | image_url                 |    0 |
 | small_image_url           |    0 |
 ## LLM Insights
-# 📚 Insights from the Book Dataset
+# Correlation Matrix Analysis
 
-The provided dataset comprises information about 10,000 books, offering a treasure trove of insights into authors, publication years, and ratings gathered from the **Goodreads** community. Let's delve into the key trends, anomalies, and insights derived from this dataset.
+The correlation matrix presented provides insights into the relationships between various variables related to books. Below is a detailed analysis of the key observations:
 
----
+### **Key Observations**
+
+<table>
+    <tr>
+        <th>Variable Pair</th>
+        <th>Correlation Coefficient</th>
+        <th>Interpretation</th>
+    </tr>
+    <tr>
+        <td>ratings_books</td>
+        <td>1.00</td>
+        <td>Perfect correlation with itself, as expected.</td>
+    </tr>
+    <tr>
+        <td>ratings_count</td>
+        <td>0.94</td>
+        <td>Very strong positive correlation with ratings_books. Indicates that as ratings count increases, ratings score also tends to increase.</td>
+    </tr>
+    <tr>
+        <td>book_id</td>
+        <td>0.62</td>
+        <td>Moderate positive correlation with ratings_books. Suggests potential interrelationship between unique book identifiers and user ratings.</td>
+    </tr>
+    <tr>
+        <td>ratings_1</td>
+        <td>0.99</td>
+        <td>Almost perfect correlation with ratings_count, suggesting users may rate consistently.</td>
+    </tr>
+    <tr>
+        <td>ratings_5</td>
+        <td>-0.41</td>
+        <td>Moderate negative correlation with ratings_count, indicating that higher overall ratings might mean fewer 1-star ratings.</td>
+    </tr>
+    <tr>
+        <td>isbn13</td>
+        <td>-0.01</td>
+        <td>Very weak negative correlation with ratings_books, suggesting no significant relationship between ISBN and ratings.</td>
+    </tr>
+    <tr>
+        <td>best_book_id</td>
+        <td>0.36</td>
+        <td>Weak positive correlation with ratings_books, indicating that the best book identifier might slightly influence ratings.</td>
+    </tr>
+    <tr>
+        <td>books_count</td>
+        <td>0.28</td>
+        <td>Weak positive correlation with ratings_count, suggesting that more books may lead to increased ratings.</td>
+    </tr>
+    <tr>
+        <td>ratings_2</td>
+        <td>0.83</td>
+        <td>Strong positive correlation with ratings_count, indicating that users are likely to give similar ratings across multiple scores.</td>
+    </tr>
+    <tr>
+        <td>ratings_3</td>
+        <td>0.94</td>
+        <td>Strong positive correlation with ratings_count; shows high reliability in how users rate books.</td>
+    </tr>
+</table>
+
+### **Conclusion**
+
+The correlation matrix provides a comprehensive overview of how different variables related to books interact with one another. High correlations among ratings indicate that user behavior tends to be consistent. Conversely, ISBN numbers show little to no correlation with ratings, suggesting that the book's identification does not impact user satisfaction. Understanding these relationships can be beneficial for enhancing user experiences, improving recommendation systems, and targeting readership accurately.
+
+## LLM Insights
+# 📚 Insights from the Books Dataset
+
+The dataset encompasses an extensive collection of books, consisting of 10,000 entries that are richly documented across various attributes. Let's delve into the findings and illuminate key trends, potential anomalies, and insightful observations from this collection.
 
 ## 1. Key Trends and Patterns
 
-### **High Average Ratings**
+### **Average Ratings and Ratings Counts**
 
-The books in this dataset largely enjoy favorable ratings. The **average rating** across all books is **4.00** (mean), with a standard deviation of **0.25**, indicating a concentrated tendency towards higher ratings. 
+The dataset reveals that the **average rating** of books is approximately **4.00** with a noteworthy standard deviation of about **0.25**. This suggests a general trend toward positive ratings, reflecting reader satisfaction:
 
-- **Rating Distribution**:
-  - **1 Star Ratings**: Average of **1,345**
-  - **2 Star Ratings**: Average of **3,110**
-  - **3 Star Ratings**: Average of **11,476**
-  - **4 Star Ratings**: Average of **19,966**
-  - **5 Star Ratings**: Average of **23,790**
+- **Average Rating:** 4.00
+- **Highest Average Rating:** 4.82
+- **Lowest Average Rating:** 2.47
 
-This pattern suggests that most readers tend to give positive feedback, with the distribution skewed towards higher ratings. 
+The **ratings count** varied significantly from **2,716** to a staggering **4,780,653**, indicating a few immensely popular titles that garnered a vast audience, while many others remained under the radar.
 
-### **Publication Trends**
+### **Authors with High Representation**
 
-The dataset covers a broad range of publication years, with an average **original publication year** of **1981**. Notably:
+Prominent authors within the dataset prominently include:
 
-- **Recent Publications**: The most recent books (up to **2017**) show higher average ratings, indicating a possible trend of improving book quality or evolving reader preferences.
-  
-### **Authors and Books** 
+- **Stephen King:** 6.0%
+- **Nora Roberts:** 5.9%
+- **Dean Koontz:** 4.7%
+- **Terry Pratchett:** 4.2%
+- **Agatha Christie:** 3.9%
 
-The average number of books per author is approximately **75.71**, suggesting that many authors are prolific, contributing significantly to the quantity of literature available. 
+These figures indicate that a small group of well-known authors dominates a considerable share of the dataset, possibly reflecting their widespread readership and consistent publication.
 
----
+### **Language Codes**
+
+The dataset heavily favors **English-language books**, with **71.12%** noted as `eng` and `en-US` accounting for **23.22%**. This reinforces the focus on anglo-centric literature.
 
 ## 2. Potential Outliers or Anomalies
 
-### **Extreme Ratings Count**
+### **Publication Year Outliers**
 
-Several titles exhibit anomalously high ratings counts, with the maximum recorded at **4,780,653**. This could indicate:
-- A book that may have gone viral or **unusual popularity**.
-- A potential data entry error that should be investigated.
+The **publication years** range dramatically from as early as **1750** to **2017**. Notably:
 
-### **Books Count Anomaly**
+- **Earliest Publication Year:** -1750 (likely an erroneous entry)
+- **Latest Publication Year:** 2017
 
-The maximum **books count** reported is **3455**. While some authors are known for their extensive bibliographies, this number raises questions regarding possible data inaccuracies or aggregated collections. 
+Initial scrutiny indicates the **-1750** year is likely an anomaly that requires validation.
 
-### **Publication Year Anomalies**
+### **Extreme Ratings Counts**
 
-The original publication year has a minimum value of **-1750**, which is historically intriguing but raises concerns about data validity for that record. 
+The highest ratings count is **4,780,653**, which is significantly skewed compared to the mean rating count of **54,001**. This discrepancy hints at a **potential outlier** book that may have achieved viral status.
 
----
+## 3. Suggestions for Further Analysis
 
-## 3. Suggested Insights or Analyses
+To enhance understanding of this dataset and extract deeper insights, consider performing the following analyses:
 
-### **Author Popularity Analysis**
+- **Time Series Analysis:** Explore trends over specific years to identify shifts in publishing patterns or rating trends.
+- **Correlation Studies:** Investigate how attributes like `average_rating` correlate with `ratings_count` to unravel potential influences of a book's marketing or genre.
+- **Text Analysis on Titles & Authors:** Generate insights around title popularity, exploring common words across bestselling books or applying natural language processing on author names and styles.
 
-Conducting an analysis to identify **highly-rated authors** based on average ratings and the number of ratings received could uncover marketable trends and reader favorites.
+## 4. Additional Interesting Observations
 
-### **Trend Analysis Over Time**
-
-Analyzing trends over publication decades may reveal the **evolution of book ratings** and genre popularity. 
-
-### **Correlation Analysis**
-
-Exploring correlations between the number of ratings and the **average ratings** may indicate how engagement influences perception. 
-
----
-
-## 4. Other Interesting Observations
-
-- **Language Diversity**: The dataset doesn’t provide insights into language distribution, but the presence of multiple language codes would be worth examining for global readership trends.
+- **Image URLs:** A significant number of titles leverage a default placeholder image (`33.32%` usage), suggesting a possible lack of up-to-date book image data.
   
-- **High Reader Engagement**: With an average ratings count of **54,001**, many books have engaged readers, indicating a healthy interaction and feedback loop between authors and audiences.
+- **Chi-Squared Test Results:** The chi-squared tests reveal some significant relationships such as the strong connection between `authors` and `original_title`, indicating that certain authors have a consistent thematic style or naming convention in their works.
 
-- **Rich Visual Content**: Each entry includes URLs for images, which, if analyzed, could provide insight into visual appeal’s effect on book ratings.
-
----
+- **Ratios of Ratings:** The proportion of **five-star ratings** nearly equals that of **one-star ratings**, with the five-star ratings having a count of approximately **2,378,980**, showcasing polarized reader opinions towards some titles.
 
 ## Conclusion
 
-This dataset acts as a gateway to understanding reader preferences and book performance in the literary world. Although trends suggest a general inclination towards positively reviewed books, outliers signify that not all patterns fit the mold, prompting deeper analysis. As we venture further into this rich literary landscape, more revelations await. 
-
-By spotlighting authors, decoding trends over decades, and establishing correlations, we can cultivate a comprehensive understanding of what resonates with readers today.
+The dataset provides a rich tapestry of information, revealing trends in reader preferences, significant authors, and anomalies. As we explore deeper into the dataset, further analyses can yield insights into the evolving landscape of literature and reader engagement. By understanding these patterns and anomalies, stakeholders can make informed decisions around publishing trends, marketing strategies, and reader engagement methodologies.

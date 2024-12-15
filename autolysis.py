@@ -9,7 +9,8 @@
 #   "requests",
 #   "matplotlib",
 #   "tabulate",
-#   "wordcloud"
+#   "wordcloud",
+#   "tenacity"
 # ]
 # ///
 
@@ -174,7 +175,7 @@ def analyze_with_llm(filename: str, api_key: str) -> Optional[str]:
     Columns: {', '.join(data.columns)}
     Column Information (Data Types): {json.dumps(column_info, indent=2)}
     Summary Statistics (Key Insights):
-    {json.dumps(dataset_summary, indent=2)}
+    {dataset_summary}
 
     Based on this, please:
     1. Identify key trends and patterns.
