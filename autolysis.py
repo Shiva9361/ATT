@@ -751,19 +751,22 @@ def main(file_path: str) -> None:
         f.write(missing_values.to_markdown())
 
     corr_path = generate_visualizations(data, file_path)
-
-    llm_response = analyze_image_with_llm(corr_path, AIPROXY_TOKEN)
-
+    try:
+        llm_response = analyze_image_with_llm(corr_path, AIPROXY_TOKEN)
+    except:
+        pass
     if llm_response:
         save_readme(file_path, llm_response)
-
-    llm_response = analyze_with_llm(file_path, AIPROXY_TOKEN)
-
+    try:
+        llm_response = analyze_with_llm(file_path, AIPROXY_TOKEN)
+    except:
+        pass
     if llm_response:
         save_readme(file_path, llm_response)
-
-    analyze_and_generate_graphs(data, AIPROXY_TOKEN)
-
+    try:
+        analyze_and_generate_graphs(data, AIPROXY_TOKEN)
+    except:
+        pass
     print("Analysis complete. Results saved to README.md and charts.")
 
 
