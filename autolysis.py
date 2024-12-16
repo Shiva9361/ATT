@@ -26,6 +26,7 @@ import sys
 import json
 from typing import Tuple, Optional
 from wordcloud import WordCloud
+from tenacity import retry, stop_after_attempt
 
 import pandas as pd
 import seaborn as sns
@@ -140,6 +141,7 @@ def generate_visualizations(data: pd.DataFrame, file_path: str) -> str:
     return corr_path
 
 
+@retry(stop=stop_after_attempt(3))
 def analyze_with_llm(filename: str, api_key: str) -> Optional[str]:
     """
     Analyzes the dataset using an LLM via a proxy API and returns string in markdown format.
@@ -212,13 +214,15 @@ def analyze_with_llm(filename: str, api_key: str) -> Optional[str]:
     if response.status_code == 200:
         result = response.json()
         analysis = result["choices"][0]["message"]["content"]
+        print("Done Analysis")
         return analysis
     else:
         print(response.text)
         print(f"Error: {response.status_code}")
-        return None
+        raise Exception("Didn't work")
 
 
+@retry(stop=stop_after_attempt(7))
 def analyze_and_generate_graphs(data: pd.DataFrame, api_key: str) -> None:
     """
     Analyzes the dataset, identifies data types, and dynamically calls functions to generate graphs
@@ -411,11 +415,12 @@ def analyze_and_generate_graphs(data: pd.DataFrame, api_key: str) -> None:
             func(data, **args)
         except:
             generate_mixed_data_charts(data, folder_path)
+        print("Analysis Done")
         return None
     else:
         print(response.text)
         print(f"Error: {response.status_code}")
-        return None
+        raise Exception("Didn't work")
 
 
 def data_summary(data, numerical_cols, categorical_cols, time_series_cols, text_cols):
@@ -649,6 +654,7 @@ def generate_mixed_data_charts(data: pd.DataFrame, output_folder: str) -> None:
         generate_categorical_charts(data, categorical_cols, output_folder)
 
 
+@retry(stop=stop_after_attempt(3))
 def analyze_image_with_llm(image_path: str, api_key: str) -> Optional[str]:
     """
     Sends image data with reduced quality to an LLM via the proxy API and returns analysis results in markdown format.
@@ -724,7 +730,7 @@ def analyze_image_with_llm(image_path: str, api_key: str) -> Optional[str]:
     else:
         print(response.text)
         print(f"Error: {response.status_code}")
-        return None
+        raise Exception("Didn't work")
 
 
 def main(file_path: str) -> None:
@@ -751,6 +757,7 @@ def main(file_path: str) -> None:
         f.write(missing_values.to_markdown())
 
     corr_path = generate_visualizations(data, file_path)
+    llm_response = None
     try:
         llm_response = analyze_image_with_llm(corr_path, AIPROXY_TOKEN)
     except:
